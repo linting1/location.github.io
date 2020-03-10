@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>城市三级联动</title>
+    <link rel="stylesheet" href="css.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="location">
+            <div class="form-group">
+                <select class="form-control" id="province">
+                <option>请选择省份</option>
+            </select>
+            </div>
+            <div class="form-group">
+                <select class="form-control" id="city">
+                <option>请选择城市</option>
+            </select>
+            </div>
+            <div class="form-group">
+                <select class="form-control" id="area">
+                <option>请选择县城</option>
+            </select>
+            </div>
+        </div>
+        <table id='box' border='1'>
+        </table>
+    </div>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/ajax.js"></script>
+    <script src="js/template-web.js"></script>
+    <!-- 省份渲染 -->
+    <script type="text/html" id="provinceTpl">
+        <option>请选择省份</option>
+        {{each province}}
+        <option value="{{$index}}" name="{{$value}}">{{$value}}</option>
+        {{/each}}
+        <!-- 省份渲染 -->
+    </script>
+    <!-- 城市渲染 -->
+    <script type="text/html" id="cityTpl">
+        <option>请选择城市</option>
+        {{each cities}}
+        <option value="{{$index}}">{{$value}}</option>
+        {{/each}}
+    </script>
+    <!-- 县城渲染 -->
+    <script type="text/html" id="areaTpl">
+        <option>请选择县城</option>
+        {{each area}}
+        <option value="{{$index}}">{{$value}}</option>
+        {{/each}}
+    </script>
+
+    <script type="text/html" id="weatherTpl">
+        <tr>
+            <th>时间</th>
+            <th>最低温度</th>
+            <th>最高温度</th>
+            <th>天气</th>
+            <th>风力</th>
+        </tr>
+        {{each info}}
+        <tr>
+            <td>{{$value.time}}</td>
+            <td>{{$value.min_degree}}°</td>
+            <td>{{$value.max_degree}}°</td>
+            <td>{{$value.day_weather}}</td>
+            <td>{{$value.day_wind_power}}级</td>
+        </tr>
+        {{/each}}
+    </script>
+
+    <script>
+        var province = document.getElementById('province');
+        var city = document.getElementById('city');
+        var area = document.getElementById('area'); // 获取天气信息
+        var box = document.getElementById('box');
+        // 获取省份信息
+        ajax({
+            url: 'http://localhost:3000/province',
+            success: function(data) {
+                var html = template('provinceTpl', {
+                    province: JSON.parse(data)
+                })
+                province.innerHTML = html;
+            }
+        });
+        // 获取到省份的ID，通过ID获取市的信息
+        province.onchange = function() {
+            var pid = this.value;
+            // 清空县城的下拉数据
+            var html = template('areaTpl', {
+                area: []
+            });
+            area.innerHTML = html;
+            ajax({
+                url: 'http://localhost:3000/cities',
+                data: {
+                    id: pid
+                },
+                success: function(data) {
+                    var html = template('cityTpl', {
+                        cities: JSON.parse(data)
+                    })
+                    city.innerHTML = html;
+                }
+            })
+        };
+        // 获取到城市的ID，通过ID获取市的信息
+        city.onchange = function() {
+            var cid = this.value;
+            ajax({
+                url: 'http://localhost:3000/area',
+                data: {
+                    id: cid
+                },
+                success: function(data) {
+                    var html = template('areaTpl', {
+                        area: JSON.parse(data)
+                    })
+                    area.innerHTML = html;
+                }
+            })
+        };
+        area.onchange = function() {
+            var pindex = province.selectedIndex;
+            var cindex = city.selectedIndex;
+            var aindex = area.selectedIndex;
+            var pname = province[pindex].text;
+            var cname = city[cindex].text;
+            var aname = area[aindex].text;
+            // 获取省份城市的ID然后通过ID获取到天气
+            $.ajax({
+                url: 'https://wis.qq.com/weather/common',
+                data: {
+                    source: 'pc',
+                    weather_type: 'forecast_24h',
+                    province: pname,
+                    city: cname
+                },
+                dataType: 'jsonp',
+                success: function(data) {
+                    var html = template('weatherTpl', {
+                        info: data.data.forecast_24h
+                    });
+                    box.innerHTML = html;
+                }
+            });
+        };
+    </script>
+</body>
+
+</html>
